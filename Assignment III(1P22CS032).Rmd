@@ -1,0 +1,117 @@
+---
+title: "Assignment-1lll"
+author: "Suryaprakash S"
+date: "2023-09-23"
+output: html_document
+---
+
+1. In this problem, you will develop a model to predict whether a given car gets high or low gas mileage based on the Auto data set.
+```{r}
+library(ISLR)
+summary(Auto)
+```
+
+(a) Create a binary variable, mpg01, that contains a 1 if mpg contains a value above its median, and a 0 if mpg contains a value below its median. You can compute the median using the median() function. Note you may find it helpful to use the data.frame() function to create a single data set containing both mpg01 and the other Auto variables.
+```{r}
+median_mpg <- median(Auto$mpg)
+Auto$mpg01 <- ifelse(Auto$mpg > median_mpg, 1, 0)
+Auto$mpg01
+Auto1 <- data.frame(Auto, mpg01)
+View(Auto1)
+```
+(b) Explore the data graphically in order to investigate the association between mpg01 and the other features. Which of the other features seem most likely to be useful in predicting mpg01? Scatterplots and boxplots may be useful tools to answer this question. Describe your findings. 
+```{r}
+cor(Auto1[,-9])
+pairs(Auto1)
+
+```
+
+```{r}
+par(mfrow=c(2,3))
+boxplot(cylinders ~ mpg01, data = Auto1, main = "Cylinders vs mpg01")
+boxplot(displacement ~ mpg01, data = Auto1, main = "Displacement vs mpg01")
+boxplot(horsepower ~ mpg01, data = Auto1, main = "Horsepower vs mpg01")
+boxplot(weight ~ mpg01, data = Auto1, main = "Weight vs mpg01")
+boxplot(acceleration ~ mpg01, data = Auto1, main = "Acceleration vs mpg01")
+boxplot(year ~ mpg01, data = Auto1, main = "Year vs mpg01")
+```
+some association between “mpg01” and “cylinders”, “weight”, “displacement” and “horsepower”.
+
+(c)	 Split the data into a training set and a test set.
+```{r}
+set.seed(123)
+train<-sample(nrow(Auto1), size = nrow(Auto1)*0.70)
+train_data=Auto1[train,]
+test_data=Auto1[-train,]
+
+dim(Auto1)
+dim(test_data)
+dim(train_data)
+
+```
+(d)	Perform LDA on the training data in order to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained?
+```{r}
+library(MASS)
+lda_model<- lda(mpg01~cylinders + weight + displacement + horsepower, data=train_data)
+lda_model
+lda_pred<- predict(lda_model,test_data)
+names(lda_pred)
+pred.lda <- predict(lda_model, test_data)
+table(pred.lda$class, test_data$mpg01)
+lda_error <- mean(lda_pred$class != test_data$mpg01)
+lda_error
+
+```
+We conclude that we have a test error rate of 11.01%
+
+
+(e)	Perform QDA on the training data in order to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained? 
+```{r}
+qda_model = qda(mpg01 ~ cylinders + horsepower + weight + acceleration, data=train_data)
+qda_model
+qda_pred <- predict(qda_model, test_data)
+qda.pred
+qda_error <- mean(qda_pred$class != test_data$mpg01)
+qda_error
+```
+We may conclude that we have a test error rate of 0.093%.
+
+(f)	Perform logistic regression on the training data in order to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained?
+```{r}
+glm_model <- glm(mpg01 ~ cylinders + weight + displacement + horsepower, data = training_data, family = binomial)
+summary(glm_model)
+
+probs <- predict(glm_model, test_data, type = "response")
+pred.glm <- rep(0, length(probs))
+pred.glm[probs > 0.5] <- 1
+table(pred.glm, test_data$mpg01)
+mean(pred.glm != test_data$mpg01)
+
+```
+Test error rate in logistic regression is 11.01695%.
+
+
+(g)	Perform KNN on the training data, with several values of K, in order to predict mpg01. Use only the variables that seemed most associated with mpg01 in (b). What test errors do you obtain? Which value of K seems to perform the best on this data set?
+
+```{r}
+train_data <- na.omit(train_data)
+```
+
+```{r}
+library(class)
+
+k_values <- c(1, 3, 5, 7)  
+
+knn_errors <- numeric(length(k_values))
+
+for (i in 1:length(k_values)) {
+  knn_pred <- knn(train = train_data[, c("displacement", "weight", "acceleration", "horsepower", "cylinders")],
+                   test = test_data[, c("displacement", "weight", "acceleration", "horsepower", "cylinders")],
+                   cl = train_data$mpg01, k = k_values[i])
+  knn_errors[i] <- mean(knn_pred != test_data$mpg01)
+}
+
+best_k <- k_values[which.min(knn_errors)]
+best_k_error <- min(knn_errors)
+best_k_error
+```
